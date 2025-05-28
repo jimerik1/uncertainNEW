@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  anti-collision-api:
+    build:
+      context: .
+      dockerfile: CD/Dockerfile
+    ports:
+      - "${API_PORT:-5000}:5000"  # Default to 5000 if API_PORT not set
+    volumes:
+      # Mount source code for live reloading
+      - ./app.py:/app/app.py
+      - ./models:/app/models
+      - ./services:/app/services
+      - ./utils:/app/utils
+      - ./validation:/app/validation
+      - ./tores_reference:/app/tores_reference
+      # Mount any data files needed
+      - ./data:/app/data:ro  # Read-only mount for data files
+    environment:
+      - FLASK_ENV=development
+      - FLASK_DEBUG=1
+      - PYTHONPATH=/app
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    command: ["python", "app.py"]
