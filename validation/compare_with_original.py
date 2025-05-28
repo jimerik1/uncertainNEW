@@ -21,7 +21,7 @@ from utils.data_conversion import convert_excel_trajectory_to_api_format
 
 
 class ValidationComparison:
-    def __init__(self, api_base_url: str = "http://localhost:5000"):
+    def __init__(self, api_base_url: str = "http://localhost:5059"):
         self.api_base_url = api_base_url
         self.project_root = project_root
         self.tores_reference_dir = self.project_root / "tores_reference"
@@ -397,8 +397,8 @@ def main():
     import argparse
     
     parser = argparse.ArgumentParser(description='Validate API against original script')
-    parser.add_argument('--api-url', default='http://localhost:5000', 
-                       help='Base URL for the API (default: http://localhost:5000)')
+    parser.add_argument('--api-url', default='http://localhost:5059', 
+                       help='Base URL for the API (default: http://localhost:5059)')
     parser.add_argument('--wait-time', type=int, default=60,
                        help='Maximum time to wait for API (default: 60 seconds)')
     
