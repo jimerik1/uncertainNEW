@@ -243,18 +243,15 @@ class DistanceCalculationService:
                 # Calculate MD at offset well
                 MD_off = data_w[offset_well_idx][A]['depth'] + t0 * (data_w[offset_well_idx][B]['depth'] - data_w[offset_well_idx][A]['depth'])
                 
-                # Store results
+                # Store results with descriptive names
                 shortest_distance[offset_well_idx][ref_station_idx] = {
-                    'sht_dist': sht_dist,
-                    'C': len(data_w[offset_well_idx]) - 1 if (dist_end < min(dist_nA, dist_nB)) else (A if d2_ab(0) < d2_ab(1) else B),
-                    'ind1': A,
-                    'ind2': B,
-                    'KC': dist_end if (dist_end < min(dist_nA, dist_nB)) else np.sqrt(d2_ab(0) if d2_ab(0) < d2_ab(1) else d2_ab(1)),
-                    'segment': 'CC',
-                    't': t0,
-                    'Cl_coord': Cl_point,
-                    'D_vec': D,
-                    'MD_offset': MD_off
+                    'shortest_distance': sht_dist,
+                    'segment_start_index': A,
+                    'segment_end_index': B,
+                    'interpolation_factor': t0,
+                    'closest_point_coordinates': Cl_point,
+                    'direction_vector': D,
+                    'offset_well_measured_depth': MD_off
                 }
         
         return shortest_distance
@@ -292,13 +289,13 @@ class DistanceCalculationService:
             distance_results = {}
             for ref_station_idx, dist_data in distances[offset_well_idx].items():
                 distance_results[ref_station_idx] = DistanceResult(
-                    sht_dist=dist_data['sht_dist'],
-                    ind1=dist_data['ind1'],
-                    ind2=dist_data['ind2'],
-                    t=dist_data['t'],
-                    cl_coord=dist_data['Cl_coord'].tolist(),
-                    d_vec=dist_data['D_vec'].tolist(),
-                    md_offset=dist_data['MD_offset']
+                    shortest_distance=dist_data['shortest_distance'],
+                    segment_start_index=dist_data['segment_start_index'],
+                    segment_end_index=dist_data['segment_end_index'],
+                    interpolation_factor=dist_data['interpolation_factor'],
+                    closest_point_coordinates=dist_data['closest_point_coordinates'].tolist(),
+                    direction_vector=dist_data['direction_vector'].tolist(),
+                    offset_well_measured_depth=dist_data['offset_well_measured_depth']
                 )
             
             results.append(WellDistanceResult(

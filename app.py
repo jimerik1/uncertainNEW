@@ -59,6 +59,29 @@ def calculate_minimum_distance():
             ...
         ]
     }
+    
+    Response will contain:
+    {
+        "results": [
+            {
+                "reference_well_id": "REF-001",
+                "offset_well_id": "OFFSET-001",
+                "distances": {
+                    "0": {
+                        "shortest_distance": 25.3,
+                        "closest_point_coordinates": [1234.5, 6789.0, 2500.0],
+                        "direction_vector": [0.8, 0.6, 0.0],
+                        "segment_start_index": 15,
+                        "segment_end_index": 16,
+                        "interpolation_factor": 0.35,
+                        "offset_well_measured_depth": 2485.7
+                    },
+                    ...
+                }
+            }
+        ],
+        "calculation_time": 1.25
+    }
     """
     try:
         # Validate input
@@ -88,7 +111,7 @@ def calculate_minimum_distance():
         
         logger.info(f"Calculation completed in {calc_time:.3f} seconds")
         
-        return jsonify(response.dict())
+        return jsonify(response.model_dump())  # Fixed: Use model_dump() instead of dict()
     
     except Exception as e:
         logger.error(f"Calculation failed: {str(e)}")
@@ -142,7 +165,7 @@ def calculate_minimum_distance_batch():
                 
                 batch_results.append({
                     'reference_well_id': calc_request.reference_well.well_id,
-                    'results': [r.dict() for r in results],
+                    'results': [r.model_dump() for r in results],  # Fixed: Use model_dump() instead of dict()
                     'calculation_time': calc_time
                 })
                 

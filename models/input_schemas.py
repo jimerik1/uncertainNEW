@@ -41,19 +41,19 @@ class MinimumDistanceRequest(BaseModel):
 
 class DistanceResult(BaseModel):
     """Result for single distance calculation between two survey points"""
-    sht_dist: float = Field(..., description="Shortest distance")
-    ind1: int = Field(..., description="First offset well index")
-    ind2: int = Field(..., description="Second offset well index") 
-    t: float = Field(..., description="Interpolation parameter")
-    cl_coord: List[float] = Field(..., description="Closest point coordinates [N, E, TVD]")
-    d_vec: List[float] = Field(..., description="Direction vector [N, E, TVD]")
-    md_offset: float = Field(..., description="Measured depth at offset well")
+    shortest_distance: float = Field(..., description="Shortest distance between reference point and offset well (meters)")
+    segment_start_index: int = Field(..., description="Starting survey station index in offset well segment")
+    segment_end_index: int = Field(..., description="Ending survey station index in offset well segment") 
+    interpolation_factor: float = Field(..., description="Interpolation parameter (0-1) along offset well segment")
+    closest_point_coordinates: List[float] = Field(..., description="Coordinates of closest point on offset well [North, East, TVD]")
+    direction_vector: List[float] = Field(..., description="Unit direction vector from reference point to closest point [North, East, TVD]")
+    offset_well_measured_depth: float = Field(..., description="Measured depth at closest point on offset well")
 
 
 class WellDistanceResult(BaseModel):
     """Distance results for one well pair"""
-    reference_well_id: str
-    offset_well_id: str
+    reference_well_id: str = Field(..., description="ID of the reference well")
+    offset_well_id: str = Field(..., description="ID of the offset well")
     distances: Dict[int, DistanceResult] = Field(..., description="Distance results keyed by reference survey station index")
 
 
