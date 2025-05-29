@@ -92,7 +92,7 @@ class NEVCovarianceService:
         
         # Process each IPM model
         for model_idx, (ipm_model, model_const, tie_on) in enumerate(
-            zip(well_model.ipm_models, well_model.model_constants, well_model.tie_ons)
+            zip(well_model.ipm_models, well_model.constants, well_model.tie_ons)
         ):
             error_vectors[model_idx] = {}
             error_vectors_end[model_idx] = {}
