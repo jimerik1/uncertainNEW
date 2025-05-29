@@ -241,6 +241,57 @@ class NEVValidationComparison:
             print(f"❌ Error loading well trajectories: {e}")
             return []
     
+    def get_available_ipm_files(self) -> Dict[str, str]:
+        """
+        Map the IPM filenames used in original scripts to actual available files
+        
+        Returns:
+            Dictionary mapping original names to actual filenames
+        """
+        # Files used in the original script mapped to actual filenames
+        file_mapping = {
+            "a_depth.csv": "a_depth.csv",
+            "b_continuous_gyro_GD.csv": "b_continuous_gyro_GD.csv",
+            "b_Magn_IFR_mag_corr_REDQC_MSA_dual_incl.csv": "b_Magn_IFR_mag_corr_RedQC_MSA_dual_incl.csv",  # Note case difference
+            "b_Magn_IFR_non_mag_REDQC.csv": "b_Magn_IFR_non_mag_REDQC.csv",
+            "b_MWD_gyro_GD_GWD90.csv": "b_MWD_gyro_GD_GWD90.csv",
+            "b_Magn_IFR_non_mag_dual_incl.csv": "b_Magn_IFR_non_mag_dual_incl.csv",
+            "b_Magn_IFR_non_mag_dual_incl_2.csv": "b_Magn_IFR_non_mag_dual_incl_2.csv",
+            "b_Magn_IFR_mag_corr_dual_incl.csv": "b_Magn_IFR_mag_corr_dual_incl.csv",
+            "b_Magn_interpolated_azimuth.csv": "b_Magn_interpolated_azimuth.csv",
+            "b_Magn_IFR_mag_corr_REDQC.csv": "b_Magn_IFR_mag_corr_REDQC.csv"
+        }
+        
+        # Verify files exist and return only available ones
+        available_files = {}
+        for original_name, actual_name in file_mapping.items():
+            file_path = self.tores_reference_dir / actual_name
+            if file_path.exists():
+                available_files[original_name] = actual_name
+            else:
+                print(f"⚠️  File not found: {actual_name}")
+        
+        return available_files
+    
+    def load_td_values(self) -> Tuple[float, float]:
+        """
+        Load TD (Total Depth) values from the well data
+        
+        Returns:
+            Tuple of (TD_0, TD_1) for wells 0 and 1
+        """
+        try:
+            data_file = self.tores_reference_dir / "Data.npy"
+            data_w = np.load(data_file, allow_pickle=True).item()
+            
+            TD_0 = data_w[0][len(data_w[0])-1]['depth'] if 0 in data_w else 3681.0
+            TD_1 = data_w[1][len(data_w[1])-1]['depth'] if 1 in data_w else 2719.0
+            
+            return TD_0, TD_1
+        except Exception as e:
+            print(f"⚠️  Could not load TD values: {e}, using defaults")
+            return 3681.0, 2719.0  # Default values from the original script
+    
     def create_api_payload(self) -> NEVCovarianceRequest:
         """
         Create API payload from original data files
@@ -254,6 +305,12 @@ class NEVValidationComparison:
         trajectories = self.load_well_trajectories()
         if not trajectories:
             raise ValueError("Could not load well trajectories")
+        
+        # Get available IPM files
+        available_files = self.get_available_ipm_files()
+        
+        # Load TD values
+        TD_0, TD_1 = self.load_td_values()
         
         # Define global constants (from original scripts)
         global_const_0 = GlobalConstants(
@@ -303,39 +360,41 @@ class NEVValidationComparison:
         
         wells = []
         
-        # Well 0 configuration
+        # Well 0 configuration (based on original script)
         if len(trajectories) > 0:
-            # Parse IPM files for well 0
-            ipm_files_0 = [
-                "a_depth.csv",
-                "b_continuous_gyro_GD.csv", 
-                "b_Magn_IFR_mag_corr_REDQC_MSA_dual_incl.csv",
-                "b_Magn_IFR_non_mag_REDQC.csv",
-                "b_MWD_gyro_GD_GWD90.csv",
-                "b_Magn_IFR_non_mag_dual_incl.csv"
+            # IPM files for well 0 with correct mapping
+            ipm_files_0_config = [
+                ("a_depth.csv", (0, 198), model_const),
+                ("b_continuous_gyro_GD.csv", (198, 2261), model_const),
+                ("b_Magn_IFR_mag_corr_REDQC_MSA_dual_incl.csv", (2261, 2280), model_const),
+                ("b_Magn_IFR_mag_corr_REDQC_MSA_dual_incl.csv", (2280, 2613), model_const),
+                ("b_Magn_IFR_non_mag_REDQC.csv", (2613, 2733), model_const),
+                ("b_MWD_gyro_GD_GWD90.csv", (2733, 3051), model_const),
+                ("b_Magn_IFR_non_mag_dual_incl_2.csv", (3051, TD_0), model_const)
             ]
             
             ipm_models_0 = []
             model_constants_0 = []
             tie_ons_0 = []
+            survey_legs_0 = []
             
-            tie_on_ranges_0 = [
-                (0, 198), (198, 2261), (2261, 2613), 
-                (2613, 2733), (2733, 3051), (3051, 3681)
-            ]
-            
-            for i, (ipm_file, (start_depth, end_depth)) in enumerate(zip(imp_files_0, tie_on_ranges_0)):
-                ipm_path = self.tores_reference_dir / ipm_file
-                if imp_path.exists():
-                    sensors = self.parse_ipm_file(imp_path)
+            for i, (ipm_file, (start_depth, end_depth), model_const_item) in enumerate(ipm_files_0_config):
+                if ipm_file in available_files:
+                    actual_filename = available_files[ipm_file]
+                    ipm_path = self.tores_reference_dir / actual_filename
+                    
+                    sensors = self.parse_ipm_file(ipm_path)
                     if sensors:
                         ipm_model = IPMModel(
-                            model_name=f"model_{i}",
+                            name=f"model_{i}",
                             sensors=sensors
                         )
                         ipm_models_0.append(ipm_model)
-                        model_constants_0.append(model_const)
+                        model_constants_0.append(model_const_item)
                         tie_ons_0.append(TieOn(start_depth=start_depth, end_depth=end_depth))
+                        survey_legs_0.append([SurveyLeg(start_depth=start_depth, end_depth=end_depth)])
+                else:
+                    print(f"⚠️  Skipping unavailable file: {ipm_file}")
             
             if ipm_models_0:
                 well_0 = WellErrorModel(
@@ -343,20 +402,63 @@ class NEVValidationComparison:
                     trajectory=trajectories[0],
                     global_constants=global_const_0,
                     ipm_models=ipm_models_0,
-                    model_constants=model_constants_0,
+                    constants=model_constants_0,
                     tie_ons=tie_ons_0,
-                    survey_legs=[[SurveyLeg(start_depth=to.start_depth, end_depth=to.end_depth)] for to in tie_ons_0],
+                    survey_legs=survey_legs_0,
                     mudline_depth=197.4
                 )
                 wells.append(well_0)
         
-        # Well 1 configuration (if exists)
+        # Well 1 configuration (based on original script)
         if len(trajectories) > 1:
-            # Similar setup for well 1 with different IPM files and constants
-            # This would need to be expanded based on the specific configuration
-            pass
+            ipm_files_1_config = [
+                ("a_depth.csv", (0, 198), model_const),
+                ("b_continuous_gyro_GD.csv", (198, 1902), model_const),
+                ("b_Magn_IFR_mag_corr_dual_incl.csv", (1902, 1921), model_const),
+                ("b_Magn_interpolated_azimuth.csv", (1921, 2013), model_const_2),
+                ("b_Magn_IFR_mag_corr_REDQC.csv", (2013, 2225), model_const),
+                ("b_Magn_IFR_mag_corr_REDQC.csv", (2225, 2476), model_const),
+                ("b_Magn_IFR_non_mag_dual_incl.csv", (2476, 2719), model_const),
+                ("b_Magn_IFR_non_mag_dual_incl.csv", (2719, TD_1), model_const)
+            ]
+            
+            ipm_models_1 = []
+            model_constants_1 = []
+            tie_ons_1 = []
+            survey_legs_1 = []
+            
+            for i, (ipm_file, (start_depth, end_depth), model_const_item) in enumerate(ipm_files_1_config):
+                if ipm_file in available_files:
+                    actual_filename = available_files[ipm_file]
+                    ipm_path = self.tores_reference_dir / actual_filename
+                    
+                    sensors = self.parse_ipm_file(ipm_path)
+                    if sensors:
+                        ipm_model = IPMModel(
+                            name=f"model_{i}",
+                            sensors=sensors
+                        )
+                        ipm_models_1.append(ipm_model)
+                        model_constants_1.append(model_const_item)
+                        tie_ons_1.append(TieOn(start_depth=start_depth, end_depth=end_depth))
+                        survey_legs_1.append([SurveyLeg(start_depth=start_depth, end_depth=end_depth)])
+                else:
+                    print(f"⚠️  Skipping unavailable file: {ipm_file}")
+            
+            if ipm_models_1:
+                well_1 = WellErrorModel(
+                    well_id=trajectories[1].well_id,
+                    trajectory=trajectories[1],
+                    global_constants=global_const_1,
+                    ipm_models=ipm_models_1,
+                    constants=model_constants_1,
+                    tie_ons=tie_ons_1,
+                    survey_legs=survey_legs_1,
+                    mudline_depth=197.4
+                )
+                wells.append(well_1)
         
-        # Create site and well uncertainties
+        # Create site and well uncertainties (from original script)
         site_uncertainty = SiteUncertainty(
             sigma_north=0.0,
             sigma_east=0.0,
@@ -369,6 +471,10 @@ class NEVValidationComparison:
             sigma_vertical=0.0
         )
         
+        if not wells:
+            raise ValueError("No wells could be created from available data")
+        
+        print(f"✅ Created API payload with {len(wells)} wells")
         return NEVCovarianceRequest(
             wells=wells,
             site_uncertainty=site_uncertainty,
@@ -566,6 +672,8 @@ class NEVValidationComparison:
             api_request = self.create_api_payload()
         except Exception as e:
             print(f"❌ Could not create API payload: {e}")
+            import traceback
+            traceback.print_exc()
             return False
         
         # Step 5: Call API with the same data and time it
